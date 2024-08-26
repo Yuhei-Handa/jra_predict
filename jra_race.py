@@ -58,7 +58,7 @@ class RaceDB:
         self.driver = None
         self.wait_time = 30
         self.first_month_flag = True
-        self.max_wait_time = 100
+        self.max_wait_time = 0
         self.num_wait = 0
         self.save_dir = "jra_race_data"
         self.init_driver()
