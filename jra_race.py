@@ -110,6 +110,13 @@ class RaceDB:
         except:
             return
         
+    def _has_alt(self, element:webdriver.remote.webelement.WebElement):
+        try:
+            element.get_attribute("alt")
+            return True
+        except:
+            return False
+        
     def _is_numeric(self, text:str):
         try:
             float(text)
@@ -192,6 +199,70 @@ class RaceDB:
             self.num_wait += 1
             self._wait_click_element(element, attribute)
 
+    def _find_element(self, element:webdriver.remote.webelement.WebElement, is_driver:bool, by:str, value:str):
+            if is_driver:
+                if by == "class":
+                    self._wait_class_element(value)
+                    element = self.driver.find_element(By.CLASS_NAME, value)
+                elif by == "id":
+                    self._wait_id_element(value)
+                    element = self.driver.find_element(By.ID, value)
+                elif by == "tag":
+                    self._wait_tag_element(value)
+                    element = self.driver.find_element(By.TAG_NAME, value)
+            else:
+                if by == "class":
+                    self._wait_class_element(value)
+                    element = element.find_element(By.CLASS_NAME, value)
+                elif by == "id":
+                    self._wait_id_element(value)
+                    element = element.find_element(By.ID, value)
+                elif by == "tag":
+                    self._wait_tag_element(value)
+                    element = element.find_element(By.TAG_NAME, value)
+            return element
+    
+    def _find_elements(self, element:webdriver.remote.webelement.WebElement, is_driver:bool, by:str, value:str):
+            if is_driver:
+                if by == "class":
+                    self._wait_class_element(value)
+                    elements = self.driver.find_elements(By.CLASS_NAME, value)
+                elif by == "id":
+                    self._wait_id_element(value)
+                    elements = self.driver.find_elements(By.ID, value)
+                elif by == "tag":
+                    self._wait_tag_element(value)
+                    elements = self.driver.find_elements(By.TAG_NAME, value)
+            else:
+                if by == "class":
+                    self._wait_class_element(value)
+                    elements = element.find_elements(By.CLASS_NAME, value)
+                elif by == "id":
+                    self._wait_id_element(value)
+                    elements = element.find_elements(By.ID, value)
+                elif by == "tag":
+                    self._wait_tag_element(value)
+                    elements = element.find_elements(By.TAG_NAME, value)
+            return elements
+    
+    def _element_text(self, element:webdriver.remote.webelement.WebElement):
+        if self._has_text(element):
+            return element.text
+        else:
+            return None
+        
+    def _element_attribute(self, element:webdriver.remote.webelement.WebElement, attribute:str):
+        if self._has_attribute(element, attribute):
+            return element.get_attribute(attribute)
+        else:
+            return None
+        
+    def _element_alt(self, element:webdriver.remote.webelement.WebElement):
+        if self._has_alt(element):
+            return element.get_attribute("alt")
+        else:
+            return None
+
     def _get_target_date(self):
         # csvファイルのパスは「jra_race_data\\2024\\04\\06\\2024_04_06_土曜_09_50_1回福島1日_3歳未勝利.csv」のような形式で格納
         # 「西暦_月_日_曜日_時_分_開催回数開催場所日数_レース名.csv」のような形式で格納
@@ -231,8 +302,9 @@ class RaceDB:
     def _open_next_page_until_oldest_date(self, oldest_year:int, oldest_month:int, oldest_day:int, unique_track_info_list:list):
         # ページネーションの次へボタンをクリックして、最も古い西暦、月のページまで移動する
         prev_month_flag = False
-        self._wait_id_element("contents")
-        prev_month_element = self.driver.find_element(By.ID, "contents")
+        # self._wait_id_element("contents")
+        # prev_month_element = self.driver.find_element(By.ID, "contents")
+        prev_month_element = self._find_element(element=None, is_driver=True, by="id", value="contents")
         if self._has_class(prev_month_element, "month"):
             prev_month_flag = True
         else:
@@ -240,15 +312,18 @@ class RaceDB:
         #print(f"prev_month_flag: {prev_month_flag}")
 
         # 現在の西暦、月をページから取得
-        self._wait_id_element("contents")
-        contents_element = self.driver.find_element(By.ID, "contents")
-        self._wait_class_element("nav")
-        nav_element = contents_element.find_element(By.CLASS_NAME, "nav")
-        self._wait_class_element("current")
-        current_element = nav_element.find_element(By.CLASS_NAME, "current")
-        self._wait_class_element("year")
-        # TODO: すべてのfind_elementに_waitを入れる
-        span_element = current_element.find_element(By.TAG_NAME, "span")
+        # self._wait_id_element("contents")
+        # contents_element = self.driver.find_element(By.ID, "contents")
+        contents_element = self._find_element(element=None, is_driver=True, by="id", value="contents")
+        # self._wait_class_element("nav")
+        # nav_element = contents_element.find_element(By.CLASS_NAME, "nav")
+        nav_element = self._find_element(element=contents_element, is_driver=False, by="class", value="nav")
+        # self._wait_class_element("current")
+        # current_element = nav_element.find_element(By.CLASS_NAME, "current")
+        current_element = self._find_element(element=nav_element, is_driver=False, by="class", value="current")
+        # self._wait_class_element("year")
+        # span_element = current_element.find_element(By.TAG_NAME, "span")
+        span_element = self._find_element(element=current_element, is_driver=False, by="tag", value="span")
         if self._has_text(span_element):
             current_year_month = span_element.text
             # 「2024年4月」のような形式
@@ -260,9 +335,11 @@ class RaceDB:
                 # 「前年」をクリック、次のページに移動
                 if self._has_class(nav_element, "year"):
                     # 「前年」、「翌年」の場合があるが、構造上「前年」が最初に来る
-                    tmp_prev_year_element = nav_element.find_element(By.CLASS_NAME, "year")
+                    # tmp_prev_year_element = nav_element.find_element(By.CLASS_NAME, "year")
+                    tmp_prev_year_element = self._find_element(element=nav_element, is_driver=False, by="class", value="year")
                     if self._has_tag(tmp_prev_year_element, "a"):
-                        prev_year_element = tmp_prev_year_element.find_element(By.TAG_NAME, "a")
+                        # prev_year_element = tmp_prev_year_element.find_element(By.TAG_NAME, "a")
+                        prev_year_element = self._find_element(element=tmp_prev_year_element, is_driver=False, by="tag", value="a")
                         self._wait_click_element(prev_year_element, "tag")
                         prev_year_element.click()
                         self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day, unique_track_info_list)
@@ -271,8 +348,10 @@ class RaceDB:
                     # 「前月」をクリック、次のページに移動
                     # 「前月」、「翌月」の場合があるが、構造上「前月」が最初に来る
                     if self._has_class(nav_element, "month"):
-                        tmp_prev_month_element = nav_element.find_element(By.CLASS_NAME, "month")
-                        prev_month_element = tmp_prev_month_element.find_element(By.TAG_NAME, "a")
+                        # tmp_prev_month_element = nav_element.find_element(By.CLASS_NAME, "month")
+                        tmp_prev_month_element = self._find_element(element=nav_element, is_driver=False, by="class", value="month")
+                        # prev_month_element = tmp_prev_month_element.find_element(By.TAG_NAME, "a")
+                        prev_month_element = self._find_element(element=tmp_prev_month_element, is_driver=False, by="tag", value="a")
                         self._wait_click_element(prev_month_element, "tag")
                         prev_month_element.click()
                         self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day, unique_track_info_list)
@@ -295,19 +374,22 @@ class RaceDB:
 
     def continue_month_db(self, oldest_day:int):
         prev_month_flag = False
-        self._wait_id_element("contents")
-        prev_month_element = self.driver.find_element(By.ID, "contents")
+        # self._wait_id_element("contents")
+        # prev_month_element = self.driver.find_element(By.ID, "contents")
+        prev_month_element = self._find_element(element=None, is_driver=True, by="id", value="contents")
         if self._has_class(prev_month_element, "month"):
             prev_month_flag = True
         else:
             pass
         print(f"prev_month_flag: {prev_month_flag}")
 
-        self._wait_class_element("link_list")
-        monthly_track_elements = self.driver.find_elements(By.CLASS_NAME, "link_list")
+        # self._wait_class_element("link_list")
+        # monthly_track_elements = self.driver.find_elements(By.CLASS_NAME, "link_list")
+        monthly_track_elements = self._find_elements(element=None, is_driver=True, by="class", value="link_list")
         track_element_list = []
         for monthly_track_element in monthly_track_elements:
-            daily_track_elements = monthly_track_element.find_elements(By.TAG_NAME, "a")
+            # daily_track_elements = monthly_track_element.find_elements(By.TAG_NAME, "a")
+            daily_track_elements = self._find_elements(element=monthly_track_element, is_driver=False, by="tag", value="a")
             for daily_track_element in daily_track_elements:
                 track_element_list.append(daily_track_element)
         num_track = len(track_element_list)
@@ -317,10 +399,13 @@ class RaceDB:
         self.continue_track_db(oldest_day)
 
         if prev_month_flag:
-            self._wait_id_element("contents")
-            element = self.driver.find_element(By.ID, "contents")
-            tmp_prev_month_element = element.find_element(By.CLASS_NAME, "month")
-            prev_month_element = tmp_prev_month_element.find_element(By.TAG_NAME, "a")
+            # self._wait_id_element("contents")
+            # element = self.driver.find_element(By.ID, "contents")
+            element = self._find_element(element=None, is_driver=False, by="id", value="contents")
+            # tmp_prev_month_element = element.find_element(By.CLASS_NAME, "month")
+            tmp_prev_month_element = self._find_element(element=element, is_driver=False, by="class", value="month")
+            # prev_month_element = tmp_prev_month_element.find_element(By.TAG_NAME, "a")
+            prev_month_element = self._find_element(element=tmp_prev_month_element, is_driver=False, by="tag", value="a")
             self._wait_click_element(prev_month_element, "tag")
             prev_month_element.click()
             self.get_month_db()
@@ -329,14 +414,19 @@ class RaceDB:
             self.driver.quit()
 
     def continue_track_db(self, oldest_day:int):
-        past_result_line_unit_elements = self.driver.find_elements(By.CLASS_NAME, "past_result_line_unit")
+        # past_result_line_unit_elements = self.driver.find_elements(By.CLASS_NAME, "past_result_line_unit")
+        past_result_line_unit_elements = self._find_elements(element=None, is_driver=True, by="class", value="past_result_line_unit")
         num_days = len(past_result_line_unit_elements)
         for n_day in range(num_days):
-            past_result_line_unit_elements = self.driver.find_elements(By.CLASS_NAME, "past_result_line_unit")
+            # past_result_line_unit_elements = self.driver.find_elements(By.CLASS_NAME, "past_result_line_unit")
+            past_result_line_unit_elements = self._find_elements(element=None, is_driver=True, by="class", value="past_result_line_unit")
             past_result_line_element = past_result_line_unit_elements[n_day]
-            head_element = past_result_line_element.find_element(By.CLASS_NAME, "head")
+            # head_element = past_result_line_element.find_element(By.CLASS_NAME, "head")
+            head_element = self._find_element(element=past_result_line_element, is_driver=False, by="class", value="head")
             sub_header_element = head_element.find_element(By.CLASS_NAME, "sub_header")
-            sub_header = sub_header_element.text
+            sub_header_element = self._find_element(element=head_element, is_driver=False, by="class", value="sub_header")
+            sub_header = self._element_text(sub_header_element)
+            # TODO: 全てのfind_elementを_find_elementに変更
             tmp_day = re.search(r"(\d+)日", sub_header).group(1)
             day = int(tmp_day)
             if day >= oldest_day:
