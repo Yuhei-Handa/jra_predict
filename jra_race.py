@@ -9,6 +9,7 @@ import time
 import os
 import sys
 import datetime
+import argparse
 from glob import glob
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -279,19 +280,9 @@ class RaceDB:
 
         conected_file_pathes = glob(os.path.join(oldest_day_folder_path, "*.csv"))
 
-        # 開催回数開催場所日数を取得
-        track_info_array = np.array([])
-        for conected_file_path in conected_file_pathes:
-            track_info = os.path.basename(conected_file_path).split("_")[6]
-            track_info_array = np.append(track_info_array, track_info)
-        
-        # trackinfoのユニークな値を取得
-        tmp_unique_track_info_array = np.unique(track_info_array)
-        unique_track_info_list = tmp_unique_track_info_array.tolist()
-
-        return oldest_year, oldest_month, oldest_day, unique_track_info_list
+        return oldest_year, oldest_month, oldest_day
     
-    def _open_next_page_until_oldest_date(self, oldest_year:int, oldest_month:int, oldest_day:int, unique_track_info_list:list):
+    def _open_next_page_until_oldest_date(self, oldest_year:int, oldest_month:int, oldest_day:int):
         # ページネーションの次へボタンをクリックして、最も古い西暦、月のページまで移動する
         prev_month_flag = False
         # self._wait_id_element("contents")
@@ -335,7 +326,7 @@ class RaceDB:
                     prev_year_element = self._find_element(element=tmp_prev_year_element, is_driver=False, by="tag", value="a")
                     self._wait_click_element(prev_year_element, "tag")
                     prev_year_element.click()
-                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day, unique_track_info_list)
+                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
         elif current_year == oldest_year:
             if current_month > oldest_month:
                 # 「前月」をクリック、次のページに移動
@@ -347,7 +338,7 @@ class RaceDB:
                     prev_month_element = self._find_element(element=tmp_prev_month_element, is_driver=False, by="tag", value="a")
                     self._wait_click_element(prev_month_element, "tag")
                     prev_month_element.click()
-                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day, unique_track_info_list)
+                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
             elif current_month < oldest_month:
                 # 「翌月」のボタンをクリック、次のページに移動
                 if self._has_class(nav_element, "month"):
@@ -358,13 +349,28 @@ class RaceDB:
                     next_month_element = self._find_element(element=tmp_next_month_element, is_driver=False, by="tag", value="a")
                     self._wait_click_element(next_month_element, "tag")
                     next_month_element.click()
-                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day, unique_track_info_list)
+                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
 
             elif current_month == oldest_month:
                 # 目的のページに到達した場合は、データ取得を開始する
                 self.continue_month_db(oldest_day)
             else:
                 pass
+
+    def get_past_db_from_any_date(self, date:str):
+        # 任意の日付からスクレイピングを開始する
+        # dateは「2024-04-06」のような形式で入力
+        year, month, day = date.split("-")
+        any_year = int(year)
+        any_month = int(month)
+        any_day = int(day)
+        self.driver.get(self.homepage_url)
+        element = self.driver.find_element(By.CSS_SELECTOR, "#quick_menu > div > ul > li:nth-of-type(4)")
+        element.click()
+        element = self.driver.find_element(By.CSS_SELECTOR, "#past_result > div.layout_grid.mt15 > div.cell.right > a")
+        element.click()
+        oldest_year, oldest_month, oldest_day = self._get_target_date()
+        self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
 
     def continue_past_db(self):
         # スクレイピングの偶発的な中断時用の関数
@@ -374,8 +380,8 @@ class RaceDB:
         element.click()
         element = self.driver.find_element(By.CSS_SELECTOR, "#past_result > div.layout_grid.mt15 > div.cell.right > a")
         element.click()
-        oldest_year, oldest_month, oldest_day, unique_track_info_list = self._get_target_date()
-        self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day, unique_track_info_list)
+        oldest_year, oldest_month, oldest_day = self._get_target_date()
+        self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
 
     def continue_month_db(self, oldest_day:int):
         prev_month_flag = False
@@ -1347,15 +1353,26 @@ class RaceDB:
 
 
 def main():
+    #任意の日付からデータを取得したい場合は、引数に日付を入力
+    # 例：python jra_race.py 2024-08-03 
 
     homepage_url = "https://www.jra.go.jp/"
     race_db = RaceDB(homepage_url)
-    if  not race_db.check_saved_data():
-        print("There is no new data.")
-        race_db.get_past_db()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("arg1", help="Please input the number of date such as '2024-08-03'.")
+    args = parser.parse_args()
+
+    if args.arg1:
+        any_date = args.arg1
+        race_db.get_past_db_from_any_date(any_date)
     else:
-        print("There is continued data.")
-        race_db.continue_past_db()
+        if  not race_db.check_saved_data():
+            print("There is no new data.")
+            race_db.get_past_db()
+        else:
+            print("There is continued data.")
+            race_db.continue_past_db()
 
 if __name__ == '__main__':
     main()
