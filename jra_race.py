@@ -303,59 +303,73 @@ class RaceDB:
         nav_element = self._find_element(element=contents_element, is_driver=False, by="class", value="nav")
         # self._wait_class_element("current")
         # current_element = nav_element.find_element(By.CLASS_NAME, "current")
-        current_element = self._find_element(element=nav_element, is_driver=False, by="class", value="current")
-        # self._wait_class_element("year")
-        # span_element = current_element.find_element(By.TAG_NAME, "span")
-        span_element = self._find_element(element=current_element, is_driver=False, by="tag", value="span")
-        current_year_month = span_element.text
-        # 「2024年4月」のような形式
-        tmp_current_year = re.search(r"(\d+)年", current_year_month).group(1)
-        tmp_current_month = re.search(r"(\d+)月", current_year_month).group(1)
-        current_year = int(tmp_current_year)
-        current_month = int(tmp_current_month)
-        print(f"current_year: {current_year} current_month: {current_month}")
-        print(f"olkdest_year: {oldest_year} oldest_month: {oldest_month}")
-        if current_year > oldest_year:
-            # 「前年」をクリック、次のページに移動
-            if self._has_class(nav_element, "year"):
-                # 「前年」、「翌年」の場合があるが、構造上「前年」が最初に来る
-                # tmp_prev_year_element = nav_element.find_element(By.CLASS_NAME, "year")
-                tmp_prev_year_element = self._find_element(element=nav_element, is_driver=False, by="class", value="year")
-                if self._has_tag(tmp_prev_year_element, "a"):
-                    # prev_year_element = tmp_prev_year_element.find_element(By.TAG_NAME, "a")
-                    prev_year_element = self._find_element(element=tmp_prev_year_element, is_driver=False, by="tag", value="a")
-                    self._wait_click_element(prev_year_element, "tag")
-                    prev_year_element.click()
-                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
-        elif current_year == oldest_year:
-            if current_month > oldest_month:
-                # 「前月」をクリック、次のページに移動
-                # 「前月」、「翌月」の場合があるが、構造上「前月」が最初に来る
-                if self._has_class(nav_element, "month"):
-                    # tmp_prev_month_element = nav_element.find_element(By.CLASS_NAME, "month")
-                    tmp_prev_month_element = self._find_element(element=nav_element, is_driver=False, by="class", value="month")
-                    # prev_month_element = tmp_prev_month_element.find_element(By.TAG_NAME, "a")
-                    prev_month_element = self._find_element(element=tmp_prev_month_element, is_driver=False, by="tag", value="a")
-                    self._wait_click_element(prev_month_element, "tag")
-                    prev_month_element.click()
-                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
-            elif current_month < oldest_month:
-                # 「翌月」のボタンをクリック、次のページに移動
-                if self._has_class(nav_element, "month"):
-                    # tmp_next_month_element = nav_element.find_element(By.CLASS_NAME, "month")
-                    tmp_month_elements = self._find_elements(element=nav_element, is_driver=False, by="class", value="month")
-                    tmp_next_month_element = tmp_month_elements[-1]
-                    # next_month_element = tmp_next_month_element.find_element(By.TAG_NAME, "a")
-                    next_month_element = self._find_element(element=tmp_next_month_element, is_driver=False, by="tag", value="a")
-                    self._wait_click_element(next_month_element, "tag")
-                    next_month_element.click()
-                    self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
+        if self._has_class(nav_element, "current"):
+            current_element = self._find_element(element=nav_element, is_driver=False, by="class", value="current")
+            current_element = self._find_element(element=nav_element, is_driver=False, by="class", value="current")
+            # self._wait_class_element("year")
+            # span_element = current_element.find_element(By.TAG_NAME, "span")
+            span_element = self._find_element(element=current_element, is_driver=False, by="tag", value="span")
+            current_year_month = span_element.text
+            # 「2024年4月」のような形式
+            tmp_current_year = re.search(r"(\d+)年", current_year_month).group(1)
+            tmp_current_month = re.search(r"(\d+)月", current_year_month).group(1)
+            current_year = int(tmp_current_year)
+            current_month = int(tmp_current_month)
+            print(f"current_year: {current_year} current_month: {current_month}")
+            print(f"olkdest_year: {oldest_year} oldest_month: {oldest_month}")
+            if current_year > oldest_year:
+                # 「前年」をクリック、次のページに移動
+                if self._has_class(nav_element, "year"):
+                    # 「前年」、「翌年」の場合があるが、構造上「前年」が最初に来る
+                    # tmp_prev_year_element = nav_element.find_element(By.CLASS_NAME, "year")
+                    tmp_prev_year_element = self._find_element(element=nav_element, is_driver=False, by="class", value="year")
+                    if self._has_tag(tmp_prev_year_element, "a"):
+                        # prev_year_element = tmp_prev_year_element.find_element(By.TAG_NAME, "a")
+                        prev_year_element = self._find_element(element=tmp_prev_year_element, is_driver=False, by="tag", value="a")
+                        self._wait_click_element(prev_year_element, "tag")
+                        prev_year_element.click()
+                        self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
+            elif current_year == oldest_year:
+                if current_month > oldest_month:
+                    # 「前月」をクリック、次のページに移動
+                    # 「前月」、「翌月」の場合があるが、構造上「前月」が最初に来る
+                    if self._has_class(nav_element, "month"):
+                        # tmp_prev_month_element = nav_element.find_element(By.CLASS_NAME, "month")
+                        tmp_prev_month_element = self._find_element(element=nav_element, is_driver=False, by="class", value="month")
+                        # prev_month_element = tmp_prev_month_element.find_element(By.TAG_NAME, "a")
+                        prev_month_element = self._find_element(element=tmp_prev_month_element, is_driver=False, by="tag", value="a")
+                        self._wait_click_element(prev_month_element, "tag")
+                        prev_month_element.click()
+                        self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
+                elif current_month < oldest_month:
+                    # 「翌月」のボタンをクリック、次のページに移動
+                    if self._has_class(nav_element, "month"):
+                        # tmp_next_month_element = nav_element.find_element(By.CLASS_NAME, "month")
+                        tmp_month_elements = self._find_elements(element=nav_element, is_driver=False, by="class", value="month")
+                        tmp_next_month_element = tmp_month_elements[-1]
+                        # next_month_element = tmp_next_month_element.find_element(By.TAG_NAME, "a")
+                        next_month_element = self._find_element(element=tmp_next_month_element, is_driver=False, by="tag", value="a")
+                        self._wait_click_element(next_month_element, "tag")
+                        next_month_element.click()
+                        self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
 
-            elif current_month == oldest_month:
-                # 目的のページに到達した場合は、データ取得を開始する
-                self.continue_month_db(oldest_day)
-            else:
-                pass
+                elif current_month == oldest_month:
+                    # 目的のページに到達した場合は、データ取得を開始する
+                    self.continue_month_db(oldest_day)
+                else:
+                    pass
+        else:
+            # 「9月1日（日）」のような場合、レースデータが存在しない場合がある
+            # この場合、ページにcurrentクラスが存在しない
+            # そのため、前月のページに移動する
+            if self._has_class(nav_element, "month"):
+                # tmp_prev_month_element = nav_element.find_element(By.CLASS_NAME, "month")
+                tmp_prev_month_element = self._find_element(element=nav_element, is_driver=False, by="class", value="month")
+                # prev_month_element = tmp_prev_month_element.find_element(By.TAG_NAME, "a")
+                prev_month_element = self._find_element(element=tmp_prev_month_element, is_driver=False, by="tag", value="a")
+                self._wait_click_element(prev_month_element, "tag")
+                prev_month_element.click()
+                self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
 
     def get_past_db_from_any_date(self, date:str):
         # 任意の日付からスクレイピングを開始する
@@ -369,8 +383,7 @@ class RaceDB:
         element.click()
         element = self.driver.find_element(By.CSS_SELECTOR, "#past_result > div.layout_grid.mt15 > div.cell.right > a")
         element.click()
-        oldest_year, oldest_month, oldest_day = self._get_target_date()
-        self._open_next_page_until_oldest_date(oldest_year, oldest_month, oldest_day)
+        self._open_next_page_until_oldest_date(any_year, any_month, any_day)
 
     def continue_past_db(self):
         # スクレイピングの偶発的な中断時用の関数
