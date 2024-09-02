@@ -9,6 +9,7 @@ import time
 import numpy as np
 import re
 from glob import glob
+import calendar
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -506,23 +507,495 @@ class BabaDB:
             else:
                 self.driver.quit()
 
+    def output_csv(self):
+        def _has_numeric(text:str):
+            """数値を含むかどうかを判定する
+            Args:
+                text (str): 判定する文字列
+            """
+            return any(char.isdigit() for char in text)
+        
+        def _has_dow(text:str, search_word:str):
+            """曜日を含むかどうかを判定する
+            """
+            return search_word in text
+        
+        def _has_word(text:str, search_word:str):
+            """特定の文字列を含むかどうかを判定する
+            """
+            return search_word in text
+        
+        def _is_numeric(text:str):
+            try:
+                float(text)
+                return True
+            except:
+                return False
+        
+        def _get_last_date(year:int, month:int):
+            """月の最終日を取得
+            Args:
+                year (int): 年
+                month (int): 月
+            """
+            last_date = calendar.monthrange(year, month)[1]
+            return last_date
+        
+        def _get_date_lists(tmp_date_info:str):
+            """日付のリストを取得
+            """
+
+            year = int(re.search(r"(\d+)年", tmp_date_info).group(1))
+            month = int(re.search(r"(\d+)月", tmp_date_info).group(1))
+
+            if not "から" in tmp_date_info:
+                tmp_day_list = tmp_date_info.split("～")
+                tmp_start_day = tmp_day_list[0]
+                tmp_end_day = tmp_day_list[1]
+                if not tmp_start_day[-1] == "日":
+                    tmp_start_day = tmp_start_day + "日"
+                if not tmp_end_day[-1] == "日":
+                    tmp_end_day = tmp_end_day + "日"
+                if "月" not in tmp_end_day:
+                    start_day = int(re.search(r"月(\d+)日", tmp_start_day).group(1))
+                    end_day = int(re.search(r"(\d+)日", tmp_end_day).group(1))
+                else:
+                    start_day = int(re.search(r"月(\d+)日", tmp_start_day).group(1))
+                    end_day = int(re.search(r"月(\d+)日", tmp_end_day).group(1))
+
+            else:
+                tmp_day_list = tmp_date_info.split("から")
+                tmp_start_day = tmp_day_list[0]
+                tmp_end_day = tmp_day_list[1]
+                if not tmp_start_day[-1] == "日":
+                    tmp_start_day = tmp_start_day + "日"
+                if not tmp_end_day[-1] == "日":
+                    tmp_end_day = tmp_end_day + "日"
+                if not "(" in tmp_end_day:
+                    if not "月" in tmp_end_day:
+                        start_day = int(re.search(r"月(\d+)日", tmp_start_day).group(1))
+                        print(f"start_day: {start_day}")
+                        end_day = int(re.search(r"(\d+)日", tmp_end_day).group(1))
+                        print(f"end_day: {end_day}")
+                    else:
+                        start_day = int(re.search(r"月(\d+)日", tmp_start_day).group(1))
+                        end_day = int(re.search(r"月(\d+)日", tmp_end_day).group(1))
+                else:
+                    tmp_start_day = tmp_start_day[:-3]
+                    tmp_end_day = tmp_end_day[:-3]
+                    if not "月" in tmp_end_day:
+                        start_day = int(re.search(r"月(\d+)日", tmp_start_day).group(1))
+                        end_day = int(re.search(r"(\d+)日", tmp_end_day).group(1))
+                    else:
+                        start_day = int(re.search(r"月(\d+)日", tmp_start_day).group(1))
+                        end_day = int(re.search(r"月(\d+)日", tmp_end_day).group(1))
+
+            # start_dayからend_dayまでの日付のリストを取得
+            #注意：start_day > end_dayの場合が存在する（例：2022年7月31日から8月1日）
+            if start_day < end_day:
+                day_list = [start_day + i for i in range(end_day - start_day + 1)]
+            else:
+                last_date = _get_last_date(year, month)
+                day_list = [start_day + i for i in range(last_date - start_day + 1)]
+                day_list += [1 + i for i in range(end_day)]
+
+            num_day = len(day_list)
+
+            # 年のlistを取得
+            # 年が12月から1月に変わる場合がある
+            if month == 12 and start_day > end_day:
+                year_list = [year for _ in range(last_date - start_day + 1)]
+                year_list += [year + 1 for _ in range(end_day)]
+            else:
+                year_list = [year for _ in range(num_day)]
+
+            # 月のlistを取得
+            # 月が12月から1月に変わる場合がある
+            # 途中で次の月に変わる場合がある
+            if month == 12 and start_day > end_day:
+                month_list = [12 for _ in range(last_date - start_day + 1)]
+                month_list += [1 for _ in range(end_day)]
+            elif start_day > end_day:
+                month_list = [month for _ in range(last_date - start_day + 1)]
+                month_list += [month + 1 for _ in range(end_day)]
+            else:
+                month_list = [month for _ in range(num_day)]
+
+            return year_list, month_list, day_list
+        
+        # PDFファイルのパスを取得
+        #pdf_files = ["jra_baba_data/pdf/sapporo01.pdf", "jra_baba_data/pdf/sapporo01 (4).pdf"]
+        #pdf_files = ["jra_baba_data/pdf/sapporo01 (4).pdf"]
+        pdf_files = glob(f"{self.save_pdf_dir}/*.pdf")
+        #print(f"pdf_files: {pdf_files}")
+
+        # PDFファイルを開く
+        for pdf_file in pdf_files:
+            try:
+                print(f"pdf_file: {pdf_file}")
+                new_lines = []
+                doc = pdf.PdfDocument(pdf_file)
+                num_day = 0
+                # ページ数を取得
+                for page in doc:
+                    textpage = page.get_textpage()
+                    text = textpage.get_text_range()
+                    # textを行単位で分割
+                    lines = text.split("\n")
+                    # 画像ファイルとして保存されているページはスキップ
+                    if len(lines) == 1:
+                        continue
+                    print(f"lines: {lines}")
+                    new_lines = [line for line in lines if _has_numeric(line) or _has_dow(line, "曜日")]
+                    print(f"new_lines: {new_lines}")
+                    title = new_lines[-1]
+                    contents = new_lines[:-1]
+                    num_contents_line = len(contents)
+                    indexes_per_table = [i for i, line in enumerate(contents) if _has_word(line, "年")]
+                    num_table = len(indexes_per_table)
+                    print(f"num_table: {num_table}")
+                    indexes_per_table += [num_contents_line]
+                    print(f"indexes_per_table: {indexes_per_table}")
+                    print(f"title: {title}")
+                    print(f"contexts: {contents}")
+                    num_count = int(re.search(r"第(\d+)回", title).group(1))
+                    track_name = re.search(r"回(\w+)　", title).group(1).replace("競馬場", "")
+                    num_day += 1
+                    print(f"num_count: {num_count}")
+                    print(f"track_name: {track_name}")
+                    print(f"num_day: {num_day}")
+                    output_df = None
+                    
+                    # 芝コースクッション値のテーブルが含水率テーブルの後に記載される場合が存在する。
+
+                    if "クッション" in title: # 2024~2021年はクッション率・含水率が記録される。2020~2018は含水率のみ記録される。
+                        if "芝コースクッション値" in lines[-1] and _has_word(lines[1], "場所"):
+                            for n in range(num_table):
+                                print("-"*50)
+                                start_index = indexes_per_table[n]
+                                end_index = indexes_per_table[n+1]
+                                table = contents[start_index:end_index]
+                                print(f"table: {table}")
+                                tmp_date_info = table[0]
+                                print(f"tmp_date_info: {tmp_date_info}")
+                                tmp_dow_info = table[1]
+                                print(f"tmp_dow_info: {tmp_dow_info}")
+                                tmp_turf_goal_moisture_info = table[2]
+                                print(f"tmp_turf_goal_moisture_info: {tmp_turf_goal_moisture_info}")
+                                tmp_turf_last_corner_moisture_info = table[3]
+                                print(f"tmp_turf_last_corner_moisture_info: {tmp_turf_last_corner_moisture_info}")
+                                tmp_durt_goal_moisture_info = table[4]
+                                print(f"tmp_durt_goal_moisture_info: {tmp_durt_goal_moisture_info}")
+                                tmp_durt_last_corner_moisture_info = table[5]
+                                print(f"tmp_durt_last_corner_moisture_info: {tmp_durt_last_corner_moisture_info}")
+                                tmp_turf_cushion_info = table[7]
+                                print(f"tmp_turf_cushion_info: {tmp_turf_cushion_info}")
+
+                                year_list, month_list, day_list = _get_date_lists(tmp_date_info)
+
+                                date_list = [datetime.datetime(year, month, day) for year, month, day in zip(year_list, month_list, day_list)]
+
+                                print(f"year_list: {year_list}")
+                                print(f"month_list: {month_list}")
+                                print(f"day_list: {day_list}")
+                                print(f"date_list: {date_list}")
+
+                                # 曜日を取得
+                                dow_list = [dow[:2] for dow in tmp_dow_info.strip().split(" ")]
+                                print(f"dow_list: {dow_list}")
+                                turf_cushion_list = [float(turf_cushion) for turf_cushion in tmp_turf_cushion_info.strip().split(" ") if _is_numeric(turf_cushion)]
+                                print(f"turf_cushion_list: {turf_cushion_list}")
+
+                                # ゴール前の芝含水率を取得
+                                tmp_goal_moisture_list = [moisture for moisture in tmp_turf_goal_moisture_info.strip().split(" ")]
+                                goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list if _is_numeric(moisture)]
+                                print(f"goal_moisture_list: {goal_moisture_list}")
+
+                                # 最終コーナーの芝含水率を取得
+                                tmp_last_corner_moisture_list = [moisture for moisture in tmp_turf_last_corner_moisture_info.strip().split(" ")]
+                                last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list if _is_numeric(moisture)]
+                                print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                                # ゴール前のダート含水率を取得
+                                tmp_goal_moisture_list = [moisture for moisture in tmp_durt_goal_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                                goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list]
+                                print(f"goal_moisture_list: {goal_moisture_list}")
+
+                                # 最終コーナーのダート含水率を取得
+                                tmp_last_corner_moisture_list = [moisture for moisture in tmp_durt_last_corner_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                                last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list]
+                                print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                                num_day = len(date_list)
+
+                                new_baba_df = pd.DataFrame({
+                                    "日付": date_list,
+                                    "曜日": dow_list,
+                                    "回目": num_count,
+                                    "会場": track_name,
+                                    "日目": num_day,
+                                    "芝コースクッション値": turf_cushion_list,
+                                    "芝ゴール前含水率": goal_moisture_list,
+                                    "芝最終コーナー含水率": last_corner_moisture_list,
+                                    "ダートゴール前含水率": goal_moisture_list,
+                                    "ダート最終コーナー含水率": last_corner_moisture_list
+                                })
+
+                                if output_df is None:
+                                    output_df = new_baba_df
+                                else:
+                                    output_df = pd.concat([output_df, new_baba_df], axis=0)
+
+                            else:
+                                for n in range(num_table):
+                                    print("-"*50)
+                                    start_index = indexes_per_table[n]
+                                    end_index = indexes_per_table[n+1]
+                                    table = contents[start_index:end_index]
+                                    print(f"table: {table}")
+                                    tmp_date_info = table[0]
+                                    print(f"tmp_date_info: {tmp_date_info}")
+                                    tmp_dow_info = table[1]
+                                    print(f"tmp_dow_info: {tmp_dow_info}")
+                                    tmp_turf_cushion_info = table[2]
+                                    print(f"tmp_turf_cushion_info: {tmp_turf_cushion_info}")                                
+                                    tmp_turf_goal_moisture_info = table[4]
+                                    print(f"tmp_turf_goal_moisture_info: {tmp_turf_goal_moisture_info}")
+                                    tmp_turf_last_corner_moisture_info = table[5]
+                                    print(f"tmp_turf_last_corner_moisture_info: {tmp_turf_last_corner_moisture_info}")
+                                    tmp_durt_goal_moisture_info = table[6]
+                                    print(f"tmp_durt_goal_moisture_info: {tmp_durt_goal_moisture_info}")
+                                    tmp_durt_last_corner_moisture_info = table[7]
+                                    print(f"tmp_durt_last_corner_moisture_info: {tmp_durt_last_corner_moisture_info}")
+
+
+                                    year_list, month_list, day_list = _get_date_lists(tmp_date_info)
+
+                                    date_list = [datetime.datetime(year, month, day) for year, month, day in zip(year_list, month_list, day_list)]
+
+                                    print(f"year_list: {year_list}")
+                                    print(f"month_list: {month_list}")
+                                    print(f"day_list: {day_list}")
+                                    print(f"date_list: {date_list}")
+
+
+                                    # 曜日を取得
+                                    dow_list = [dow[:2] for dow in tmp_dow_info.strip().split(" ")]
+                                    print(f"dow_list: {dow_list}")
+                                    turf_cushion_list = [float(turf_cushion) for turf_cushion in tmp_turf_cushion_info.strip().split(" ") if _is_numeric(turf_cushion)]
+                                    print(f"turf_cushion_list: {turf_cushion_list}")
+
+                                    # ゴール前の芝含水率を取得
+                                    tmp_goal_moisture_list = [moisture for moisture in tmp_turf_goal_moisture_info.strip().split(" ")]
+                                    goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list if _is_numeric(moisture)]
+                                    print(f"goal_moisture_list: {goal_moisture_list}")
+
+                                    # 最終コーナーの芝含水率を取得
+                                    tmp_last_corner_moisture_list = [moisture for moisture in tmp_turf_last_corner_moisture_info.strip().split(" ")]
+                                    last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list if _is_numeric(moisture)]
+                                    print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                                    # ゴール前のダート含水率を取得
+                                    tmp_goal_moisture_list = [moisture for moisture in tmp_durt_goal_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                                    goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list]
+                                    print(f"goal_moisture_list: {goal_moisture_list}")
+
+                                    # 最終コーナーのダート含水率を取得
+                                    tmp_last_corner_moisture_list = [moisture for moisture in tmp_durt_last_corner_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                                    last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list]
+                                    print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                                    num_day = len(date_list)
+
+                                    new_baba_df = pd.DataFrame({
+                                        "日付": date_list,
+                                        "曜日": dow_list,
+                                        "回目": num_count,
+                                        "会場": track_name,
+                                        "日目": num_day,
+                                        "芝コースクッション値": turf_cushion_list,
+                                        "芝ゴール前含水率": goal_moisture_list,
+                                        "芝最終コーナー含水率": last_corner_moisture_list,
+                                        "ダートゴール前含水率": goal_moisture_list,
+                                        "ダート最終コーナー含水率": last_corner_moisture_list
+                                    })
+
+                                    if output_df is None:
+                                        output_df = new_baba_df
+                                    else:
+                                        output_df = pd.concat([output_df, new_baba_df], axis=0)
+                        else:
+                            for n in range(num_table):
+                                print("-"*50)
+                                start_index = indexes_per_table[n]
+                                end_index = indexes_per_table[n+1]
+                                table = contents[start_index:end_index]
+                                print(f"table: {table}")
+                                tmp_date_info = table[0]
+                                print(f"tmp_date_info: {tmp_date_info}")
+                                tmp_dow_info = table[1]
+                                print(f"tmp_dow_info: {tmp_dow_info}")
+                                tmp_turf_cushion_info = table[2]
+                                print(f"tmp_turf_cushion_info: {tmp_turf_cushion_info}")
+                                tmp_turf_goal_moisture_info = table[4]
+                                print(f"tmp_turf_goal_moisture_info: {tmp_turf_goal_moisture_info}")
+                                tmp_turf_last_corner_moisture_info = table[5]
+                                print(f"tmp_turf_last_corner_moisture_info: {tmp_turf_last_corner_moisture_info}")
+                                tmp_durt_goal_moisture_info = table[6]
+                                print(f"tmp_durt_goal_moisture_info: {tmp_durt_goal_moisture_info}")
+                                tmp_durt_last_corner_moisture_info = table[7]
+                                print(f"tmp_durt_last_corner_moisture_info: {tmp_durt_last_corner_moisture_info}")
+
+                                year_list, month_list, day_list = _get_date_lists(tmp_date_info)
+
+                                date_list = [datetime.datetime(year, month, day) for year, month, day in zip(year_list, month_list, day_list)]
+
+                                print(f"year_list: {year_list}")
+                                print(f"month_list: {month_list}")
+                                print(f"day_list: {day_list}")
+                                print(f"date_list: {date_list}")
+
+                                # 曜日を取得
+                                dow_list = [dow[:2] for dow in tmp_dow_info.strip().split(" ")]
+                                print(f"dow_list: {dow_list}")
+                                turf_cushion_list = [float(turf_cushion) for turf_cushion in tmp_turf_cushion_info.strip().split(" ") if _is_numeric(turf_cushion)]
+                                print(f"turf_cushion_list: {turf_cushion_list}")
+
+                                # ゴール前の芝含水率を取得
+                                tmp_goal_moisture_list = [moisture for moisture in tmp_turf_goal_moisture_info.strip().split(" ")]
+                                goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list if _is_numeric(moisture)]
+                                print(f"goal_moisture_list: {goal_moisture_list}")
+
+                                # 最終コーナーの芝含水率を取得
+                                tmp_last_corner_moisture_list = [moisture for moisture in tmp_turf_last_corner_moisture_info.strip().split(" ")]
+                                last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list if _is_numeric(moisture)]
+                                print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                                # ゴール前のダート含水率を取得
+                                tmp_goal_moisture_list = [moisture for moisture in tmp_durt_goal_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                                goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list]
+                                print(f"goal_moisture_list: {goal_moisture_list}")
+
+                                # 最終コーナーのダート含水率を取得
+                                tmp_last_corner_moisture_list = [moisture for moisture in tmp_durt_last_corner_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                                last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list]
+                                print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                                num_day = len(date_list)
+
+                                new_baba_df = pd.DataFrame({
+                                    "日付": date_list,
+                                    "曜日": dow_list,
+                                    "回目": num_count,
+                                    "会場": track_name,
+                                    "日目": num_day,
+                                    "芝コースクッション値": turf_cushion_list,
+                                    "芝ゴール前含水率": goal_moisture_list,
+                                    "芝最終コーナー含水率": last_corner_moisture_list,
+                                    "ダートゴール前含水率": goal_moisture_list,
+                                    "ダート最終コーナー含水率": last_corner_moisture_list
+                                })
+
+                                if output_df is None:
+                                    output_df = new_baba_df
+                                else:
+                                    output_df = pd.concat([output_df, new_baba_df], axis=0)
+
+                    else:
+                        for n in range(num_table):
+                            print("-"*50)
+                            start_index = indexes_per_table[n]
+                            end_index = indexes_per_table[n+1] - 1
+                            table = contents[start_index:end_index]
+                            print(f"table: {table}")
+                            tmp_date_info = table[0]
+                            print(f"tmp_date_info: {tmp_date_info}")
+                            tmp_dow_info = table[1]
+                            print(f"tmp_dow_info: {tmp_dow_info}")
+                            tmp_turf_goal_moisture_info = table[2]
+                            print(f"tmp_turf_goal_moisture_info: {tmp_turf_goal_moisture_info}")
+                            tmp_turf_last_corner_moisture_info = table[3]
+                            print(f"tmp_turf_last_corner_moisture_info: {tmp_turf_last_corner_moisture_info}")
+                            tmp_durt_goal_moisture_info = table[4]
+                            print(f"tmp_durt_goal_moisture_info: {tmp_durt_goal_moisture_info}")
+                            tmp_durt_last_corner_moisture_info = table[5]
+                            print(f"tmp_durt_last_corner_moisture_info: {tmp_durt_last_corner_moisture_info}")
+
+                            year_list, month_list, day_list = _get_date_lists(tmp_date_info)
+
+                            date_list = [datetime.datetime(year, month, day) for year, month, day in zip(year_list, month_list, day_list)]
+
+                            print(f"year_list: {year_list}")
+                            print(f"month_list: {month_list}")
+                            print(f"day_list: {day_list}")
+                            print(f"date_list: {date_list}")
+
+
+                            # 曜日を取得
+                            dow_list = [dow[:2] for dow in tmp_dow_info.strip().split(" ") if _has_dow(dow, "曜日")]
+                            print(f"dow_list: {dow_list}")
+
+                            # ゴール前の芝含水率を取得
+                            tmp_goal_moisture_list = [moisture for moisture in tmp_turf_goal_moisture_info.strip().split(" ")]
+                            goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list if _is_numeric(moisture)]
+                            print(f"goal_moisture_list: {goal_moisture_list}")
+
+                            # 最終コーナーの芝含水率を取得
+                            tmp_last_corner_moisture_list = [moisture for moisture in tmp_turf_last_corner_moisture_info.strip().split(" ")]
+                            last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list if _is_numeric(moisture)]
+                            print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                            # ゴール前のダート含水率を取得
+                            tmp_goal_moisture_list = [moisture for moisture in tmp_durt_goal_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                            goal_moisture_list = [float(moisture) for moisture in tmp_goal_moisture_list]
+                            print(f"goal_moisture_list: {goal_moisture_list}")
+
+                            # 最終コーナーのダート含水率を取得
+                            tmp_last_corner_moisture_list = [moisture for moisture in tmp_durt_last_corner_moisture_info.strip().split(" ") if _is_numeric(moisture)]
+                            last_corner_moisture_list = [float(moisture) for moisture in tmp_last_corner_moisture_list]
+                            print(f"last_corner_moisture_list: {last_corner_moisture_list}")
+
+                            num_day = len(date_list)
+
+                            # クッション値が存在しないため、空のリストを追加
+                            turf_cushion_list = [None for _ in range(num_day)]
+
+                            new_baba_df = pd.DataFrame({
+                                "日付": date_list,
+                                "曜日": dow_list,
+                                "回目": num_count,
+                                "会場": track_name,
+                                "日目": num_day,
+                                "芝コースクッション値": turf_cushion_list,
+                                "芝ゴール前含水率": goal_moisture_list,
+                                "芝最終コーナー含水率": last_corner_moisture_list,
+                                "ダートゴール前含水率": goal_moisture_list,
+                                "ダート最終コーナー含水率": last_corner_moisture_list
+                            })
+
+                            if output_df is None:
+                                output_df = new_baba_df
+                            else:
+                                output_df = pd.concat([output_df, new_baba_df], axis=0)
+
+                    year = str(date_list[0].year)
+                    year_path = f"{self.save_csv_dir}/{year}"
+                    if not os.path.exists(year_path):
+                        os.makedirs(year_path)
+                    
+                    output_csv_path = f"{year_path}/第{num_count}回{track_name}.csv"
+
+                    output_df.to_csv(output_csv_path, index=False, encoding="utf-8")
+                    
+            except Exception as e:
+                print(f"Exception occurred: {e}")
+                continue
 def main():
-    # 同ディレクトリにあるPDFファイルを取得
-    pdf_files = glob('*.pdf')
-    # print(pdf_files)
-    # for pdf_file in pdf_files:
-    #     # PDFファイルを開く
-    #     doc = pdf.PdfDocument(pdf_file)
-    #     # ページ数を取得
-    #     for page in doc:
-    #         textpage = page.get_textpage()
-    #         text = textpage.get_text_range()
-    #         print(text)
-    #         print('---------------------------')
 
     homepage_url = "https://www.jra.go.jp/"
     baba_db = BabaDB(homepage_url)
-    baba_db.get_pdf()
+    #baba_db.get_pdf()
+    baba_db.output_csv()
 
 if __name__ == '__main__':
     main()

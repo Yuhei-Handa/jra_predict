@@ -142,6 +142,13 @@ class RaceDB:
         except:
             return False
         
+    def _has_href(self, element:webdriver.remote.webelement.WebElement):
+        try:
+            element.get_attribute("href")
+            return True
+        except:
+            return False
+        
     def _is_numeric(self, text:str):
         try:
             float(text)

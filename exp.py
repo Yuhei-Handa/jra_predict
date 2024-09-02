@@ -3,32 +3,34 @@ import numpy as np
 import re
 from glob import glob
 import os
+from playwright.sync_api import Playwright, sync_playwright, expect
+import time
 
-a = np.array([1, 2, 3, 4, 5])
-b = np.array([1, 2, 3, 4, 5])
-c = np.array([1, 2, 3, 4, 5])
+from playwright.sync_api import Playwright, sync_playwright, expect
 
-df = pd.DataFrame({'a': a, 'b': b, 'c': c})
 
-print(df)
+# def run(playwright: Playwright) -> None:
+#     homepage_url = "https://www.jra.go.jp/"
+#     browser = playwright.chromium.launch(headless=False)
+#     context = browser.new_context()
 
-d = np.array([1, 2, 3, 4, 5])
+#     # Open new page
+#     page = context.new_page()
 
-list_ = [1, 2, 3, 4, 5]
+#     # Go to https://www.google.com/
+#     page.goto(homepage_url)
+#     elements = page.query_selector_all('.content')
 
-txt = "芝3200"
 
-distance = re.search(r'\d+', txt).group()
-print(distance)
 
-data_dir = "jra_race_data"
 
-files = glob(f"{data_dir}/*")
-file = files[0]
-print(os.path.basename(file))
 
-list_ = [1, 2, 3, 4, 5]
-target = 1
+# with sync_playwright() as playwright:
+#     run(playwright)
 
-if target in list_:
-    print("OK")
+
+a = [1, 2, 3, 4, 5]
+b = [1, 2, 3, 4, 5]
+print(a + b)
+
+print(str(1 + 0))
