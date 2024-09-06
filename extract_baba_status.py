@@ -994,8 +994,8 @@ def main():
 
     homepage_url = "https://www.jra.go.jp/"
     baba_db = BabaDB(homepage_url)
-    #baba_db.get_pdf()
-    baba_db.output_csv()
+    baba_db.get_pdf()
+    #baba_db.output_csv()
 
 if __name__ == '__main__':
     main()
