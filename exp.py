@@ -34,3 +34,9 @@ b = [1, 2, 3, 4, 5]
 print(a + b)
 
 print(str(1 + 0))
+
+csv_file = "C:\Users\yuhei\Downloads\2024_第1回札幌(Sheet1) (1).csv"
+
+df = pd.read_csv(csv_file)
+
+print(df)
